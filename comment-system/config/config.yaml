@@ -1,0 +1,6 @@
+server:
+  port: 8080
+  timeout: 5s
+
+database:
+  dsn: "user:password@tcp(localhost:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local"
