@@ -59,7 +59,7 @@ function addNewRoom() {
   newRoom.className = "chat-item";
   newRoom.innerHTML = `
     <img src="${RoomProfile}" alt="Avatar" class="avatar" />
-    <div class="chat-info">
+    <div class="chat-info" >
       <h3>${RoomNameInput}</h3>
       <span class="chat-message">New message</span>
       <span class="chat-time">Time</span>
@@ -84,7 +84,6 @@ function closeOpenDiv() {
   roomNameInput.style.zIndex = "0";
   (document.getElementsByClassName("RoomNameInput")[0] as HTMLInputElement).value = '';
 }
-
 
 // 单个聊天房间组件
 interface MessageProps {
