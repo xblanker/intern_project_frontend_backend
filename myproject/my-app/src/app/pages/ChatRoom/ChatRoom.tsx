@@ -1,7 +1,7 @@
 'use client';
 
 import "./ChatRoom.css";
-import React, { Component } from "react";
+import React, { useState } from "react";
 
 // profile
 const Profile = [ 'https://pic4.zhimg.com/v2-c5a0d0d57c1a85c6db56e918707f54a3_r.jpg',
@@ -44,6 +44,35 @@ function RoomEntry (props: RoomEntryProps) {
     </div>
   ); 
   // Button From Uiverse.io by njesenberger
+}
+
+function InputRoomNameArea() {
+  const [roomId, setRoomId] = useState(0);
+  
+  return (
+    <div className="open">
+      <div className="roomName-input">
+        <h3>Please Enter the New Room Name</h3>
+        <input
+          type="text"
+          className="RoomNameInput"
+          placeholder="Search or start new chat"
+          onKeyUpCapture={(e: React.KeyboardEvent<HTMLInputElement>) => {
+            if (e.key === 'Enter') {
+              addNewRoom();
+            }
+            else if (e.key === 'Escape') {
+              closeOpenDiv();
+            }
+          }}
+        />
+        <div className="button-container">
+          <button className="create-button" onClick={addNewRoom}>Submit</button>
+          <button className="cancel-button" onClick={closeOpenDiv}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function addNewRoom() {
@@ -97,6 +126,9 @@ interface MessageProps {
     }>;
 }
 function MessageItem (props: MessageProps) {
+  if (props.roomId === 0) {
+    return <div className="message-item">Please select a room to chat.</div>;
+  }
   return (
     <div className="message-item">
       <div className="message-header">
@@ -185,38 +217,17 @@ function addNewComment(roomId: number, sender: string, content: string) {
 }
 
 export default function ChatRoom() {
-    return (
-        <div className="chat-room">
-          <RoomEntry roomId={1} roomName="General" lastSender="Alice" lastContent="Hello!aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" lastTime={Date.now()} />
-          <MessageItem 
-              roomId={1} 
-              roomName="General" 
-              messages={[
-                  { profile: 2, sender: "Alice", content: "Hello!", time: Date.now() - 60000 }
-              ]} 
-          />
-          <div className="open">
-            <div className="roomName-input">
-              <h3>Please Enter the New Room Name</h3>
-              <input
-                type="text"
-                className="RoomNameInput"
-                placeholder="Search or start new chat"
-                onKeyUpCapture={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                  if (e.key === 'Enter') {
-                    addNewRoom();
-                  }
-                  else if (e.key === 'Escape') {
-                    closeOpenDiv();
-                  }
-                }}
-              />
-              <div className="button-container">
-                <button className="create-button" onClick={addNewRoom}>Submit</button>
-                <button className="cancel-button" onClick={closeOpenDiv}>Cancel</button>
-              </div>
-            </div>
-          </div>
-        </div>
-    );
+  return (
+      <div className="chat-room">
+        <RoomEntry roomId={1} roomName="General" lastSender="Alice" lastContent="Hello!aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" lastTime={Date.now()} />
+        <MessageItem 
+            roomId={0} 
+            roomName="General" 
+            messages={[
+                { profile: 2, sender: "Alice", content: "Hello!", time: Date.now() - 60000 }
+            ]} 
+        />
+        <InputRoomNameArea />
+      </div>
+  );
 }

@@ -1,3 +1,6 @@
+'use client';
+
+import React, { useEffect } from 'react';
 import ChatRoom from "./pages/ChatRoom/ChatRoom";
 import "./globals.css";
 
