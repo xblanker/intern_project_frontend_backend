@@ -1,5 +1,6 @@
 'use client';
 
+import { METHODS } from "http";
 import "./ChatRoom.css";
 import React, { useState } from "react";
 
@@ -48,7 +49,10 @@ function RoomEntry (props: RoomEntryProps) {
 
 function InputRoomNameArea() {
   const [roomId, setRoomId] = useState(0);
-  
+  function handleRoomIdChange() {
+    setRoomId(roomId + 1);
+  }
+
   return (
     <div className="open">
       <div className="roomName-input">
@@ -60,6 +64,7 @@ function InputRoomNameArea() {
           onKeyUpCapture={(e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === 'Enter') {
               addNewRoom();
+              handleRoomIdChange();
             }
             else if (e.key === 'Escape') {
               closeOpenDiv();
@@ -67,7 +72,10 @@ function InputRoomNameArea() {
           }}
         />
         <div className="button-container">
-          <button className="create-button" onClick={addNewRoom}>Submit</button>
+          <button className="create-button" onClick={() =>{
+            addNewRoom();
+            handleRoomIdChange();
+          }}>Submit</button>
           <button className="cancel-button" onClick={closeOpenDiv}>Cancel</button>
         </div>
       </div>
@@ -75,26 +83,39 @@ function InputRoomNameArea() {
   );
 }
 
-function addNewRoom() {
+async function addNewRoom() {
   const RoomNameInput = (document.getElementsByClassName("RoomNameInput")[0] as HTMLInputElement).value;
   if (RoomNameInput === "") {
     alert("Please enter a room name.");
     return;
   }
 
-  const chatList = document.getElementsByClassName("chat-list")[0];
-  const newRoom = document.createElement("div");
-  
-  newRoom.className = "chat-item";
-  newRoom.innerHTML = `
-    <img src="${RoomProfile}" alt="Avatar" class="avatar" />
-    <div class="chat-info" >
-      <h3>${RoomNameInput}</h3>
-      <span class="chat-message">New message</span>
-      <span class="chat-time">Time</span>
-    </div>
-  `;
-  chatList.appendChild(newRoom);
+  try {
+    const response = await fetch ("http://localhost:8080/room/add", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ room_name: RoomNameInput })
+    })
+
+    const result = await response.json();
+
+    const chatList = document.getElementsByClassName("chat-list")[0];
+    const newRoom = document.createElement("div");
+    
+    newRoom.className = "chat-item";
+    newRoom.innerHTML = `
+      <img src="${RoomProfile}" alt="Avatar" class="avatar" />
+      <div class="chat-info" >
+        <h3>${RoomNameInput}</h3>
+        <span class="chat-message">New message</span>
+        <span class="chat-time">Time</span>
+      </div>
+    `;
+    chatList.appendChild(newRoom);
+  } catch (error) {
+    console.error("Error adding new room:", error);
+    alert("Failed to create room. Please try again.");
+  }
 
   closeOpenDiv();
 }
@@ -198,22 +219,43 @@ function addNewComment(roomId: number, sender: string, content: string) {
       profileId = Math.floor(Math.random() * (Profile.length-1));
     }
 
-    const message = document.createElement("div");
-    message.className = "message";
-    message.innerHTML = `
-        <img src="${Profile[profileId]}" alt="${sender}'s avatar" class="avatar">
-        <div class="message-content">
-            <div class="message-info">
-                <span class="message-sender">${sender}</span>
-                <span class="message-time">${new Date().toLocaleTimeString()}</span>
+    try {
+      const response = fetch('http://localhost:8080/room/message/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomId, profile_id: profileId, sender, content })
+      });
+      response.then(res => res.json()).then(data => {
+        if (data.code !== 0) {
+          alert(`Error: ${data.msg}`);
+          return;
+        }
+        
+        const message = document.createElement("div");
+        message.className = "message";
+        message.innerHTML = `
+            <img src="${Profile[profileId]}" alt="${sender}'s avatar" class="avatar">
+            <div class="message-content">
+                <div class="message-info">
+                    <span class="message-sender">${sender}</span>
+                    <span class="message-time">${new Date().toLocaleTimeString()}</span>
+                </div>
+                <p class="message-text">${content}</p>
             </div>
-            <p class="message-text">${content}</p>
-        </div>
-    `;
+        `;
 
-    (document.getElementsByClassName("Inputarea")[0] as HTMLInputElement).value = '';
+        (document.getElementsByClassName("Inputarea")[0] as HTMLInputElement).value = '';
 
-    messageList[0].appendChild(message);
+        messageList[0].appendChild(message);
+      }).catch(error => {
+        console.error("Error adding new comment:", error);
+        alert("Failed to send message. Please try again.");
+      });
+    }
+    catch (error) {
+        console.error("Error in addNewComment:", error);
+        alert("An error occurred while sending the message.");
+    }
 }
 
 export default function ChatRoom() {

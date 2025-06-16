@@ -17,11 +17,12 @@ const (
 )
 
 type Message struct {
-	MessageId int    `json:"message_id"`
-	RoomId    int    `json:"room_id"`
-	Sender    string `json:"sender"`
-	Content   string `json:"content"`
-	Timestamp string `json:"timestamp"`
+	MessageId  int    `json:"message_id"`
+	RoomId     int    `json:"room_id"`
+	Profile_id int    `json:"profile_id"`
+	Sender     string `json:"sender"`
+	Content    string `json:"content"`
+	Timestamp  string `json:"timestamp"`
 }
 
 type RoomPreviewInfo struct {
@@ -35,6 +36,10 @@ type Response struct {
 	Code int         `json:"code"`
 	Msg  string      `json:"msg"`
 	Data interface{} `json:"data"`
+}
+
+type RoomAddRes struct {
+	RoomId int `json:"room_id"`
 }
 
 var db *sql.DB
@@ -72,7 +77,28 @@ func main() {
 }
 
 func AddNewRoom(c *gin.Context) {
+	var room RoomPreviewInfo
+	if err := c.ShouldBindJSON(&room); err != nil {
+		c.JSON(400, Response{Code: 400, Msg: "Invalid input", Data: nil})
+		return
+	}
+	var roomId int
+	err := db.QueryRow(
+		"INSERT INTO rooms (room_name) VALUES ($1) RETURNING room_id",
+		room.RoomName,
+	).Scan(&roomId)
+	if err != nil {
+		c.JSON(500, Response{Code: 500, Msg: "Failed to add room", Data: nil})
+		return
+	}
 
+	room.RoomId = roomId
+	room.LastMessage = ""
+	room.LastMessageTime = ""
+	c.JSON(200, RoomAddRes{
+		RoomId: room.RoomId,
+	})
+	log.Printf("New room added: %+v", room)
 }
 
 func GetRoomList(c *gin.Context) {
@@ -93,8 +119,8 @@ func AddMessage(c *gin.Context) {
 
 	var messageId int
 	err := db.QueryRow(
-		"INSERT INTO messages (roomId, sender, content, timestamp) VALUES ($1, $2, NOW()) RETURNING message_id",
-		message.RoomId, message.Sender, message.Content,
+		"INSERT INTO messages (roomId, profile_id, sender, content, timestamp) VALUES ($1, $2, NOW()) RETURNING message_id",
+		message.RoomId, message.Profile_id, message.Sender, message.Content,
 	).Scan(&messageId)
 	if err != nil {
 		c.JSON(500, Response{Code: 500, Msg: "Failed to add message", Data: nil})
@@ -107,6 +133,7 @@ func AddMessage(c *gin.Context) {
 		Msg:  "Message added successfully",
 		Data: message,
 	})
+	log.Printf("New message added: %+v", message)
 }
 
 func GetMessageList(c *gin.Context) {
