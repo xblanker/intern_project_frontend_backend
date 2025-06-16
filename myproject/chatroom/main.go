@@ -62,12 +62,17 @@ func main() {
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	})
 
+	router.POST("/room/add", AddNewRoom)
 	router.GET("/room/list", GetRoomList)
-	router.POST("/room/create", DeleteRoom)
+	router.POST("/room/delete", DeleteRoom)
 	router.POST("/room/message/add", AddMessage)
 	router.GET("/room/message/list", GetMessageList)
 	router.PUT("/room/message/update", RoomMessageUpdate)
 	router.Run(":8080")
+}
+
+func AddNewRoom(c *gin.Context) {
+
 }
 
 func GetRoomList(c *gin.Context) {
@@ -80,6 +85,28 @@ func DeleteRoom(c *gin.Context) {
 
 func AddMessage(c *gin.Context) {
 	// 处理添加消息的逻辑
+	var message Message
+	if err := c.ShouldBindJSON(&message); err != nil {
+		c.JSON(400, Response{Code: 400, Msg: "Invalid input", Data: nil})
+		return
+	}
+
+	var messageId int
+	err := db.QueryRow(
+		"INSERT INTO messages (roomId, sender, content, timestamp) VALUES ($1, $2, NOW()) RETURNING message_id",
+		message.RoomId, message.Sender, message.Content,
+	).Scan(&messageId)
+	if err != nil {
+		c.JSON(500, Response{Code: 500, Msg: "Failed to add message", Data: nil})
+		return
+	}
+
+	message.MessageId = messageId
+	c.JSON(200, Response{
+		Code: 0,
+		Msg:  "Message added successfully",
+		Data: message,
+	})
 }
 
 func GetMessageList(c *gin.Context) {
