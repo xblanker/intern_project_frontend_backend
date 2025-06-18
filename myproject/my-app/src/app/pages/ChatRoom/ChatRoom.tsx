@@ -19,9 +19,35 @@ interface RoomEntryProps {
     roomName: string; // room name
     lastSender: string; // the lasted User name
     lastContent: string; // content
-    lastTime: number; // the lasted message time
+    lastTime: string; // the lasted message time
 }
-function RoomEntry (props: RoomEntryProps) {
+
+// 单个聊天房间组件
+interface MessageProps {
+    roomId: number; // room id
+    roomName: string; // room name
+    messages: Array<{
+        profile: number; // profile index
+        sender: string; // sender name
+        content: string; // message content
+        time: string; // message time
+    }>;
+}
+
+let RoomName: RoomEntryProps[] = [
+    { roomId: 1, roomName: "General", lastSender: "Alice", lastContent: "Hello!aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", lastTime: "" },
+    { roomId: 2, roomName: "Sports", lastSender: "Bob", lastContent: "Did you watch the game last night?", lastTime: "" },
+    { roomId: 3, roomName: "Movies", lastSender: "Charlie", lastContent: "I loved the new movie!", lastTime: "" },
+    { roomId: 4, roomName: "Music", lastSender: "David] ", lastContent: "Have you heard the latest album?", lastTime: "" },
+]
+
+let RoomRightNow: MessageProps = { roomId:0, roomName:"", messages:[{profile: 0, sender: "", content: "", time: ""}]}; // Initialize with default values
+if (RoomName.length > 0) {
+  RoomRightNow.roomId = RoomName[0].roomId; // 默认选中第一个房间
+  RoomRightNow.roomName = RoomName[0].roomName;
+}
+
+function RoomEntry () {
   return (
     <div className="chat-room-nav">
       <div className="sidebar-action">
@@ -33,18 +59,28 @@ function RoomEntry (props: RoomEntryProps) {
       </div>
 
       <div className="chat-list">
-        <div className="chat-item">
-          <img src={RoomProfile} alt="Avatar" className="avatar" />
-          <div className="chat-info">
-            <h3>{props.roomName}</h3>
-            <span className="chat-message">{props.lastSender}: {props.lastContent}</span>
-            <span className="chat-time">Time</span>
+        {RoomName.map((room) => (
+          <div className="chat-item" key={room.roomId} onClick={() => handleRoomClick(room.roomId, room.roomName)}>
+            <img src={RoomProfile} alt="Avatar" className="avatar" />
+            <div className="chat-info">
+              <h3>{room.roomName}</h3>
+              <span className="chat-message">{room.lastContent}</span>
+              <span className="chat-time"></span>
+            </div>
           </div>
-        </div>
+        ))}
       </div>
     </div>
   ); 
   // Button From Uiverse.io by njesenberger
+}
+
+function handleRoomClick(roomId: number, roomName: string) {
+  RoomRightNow.roomId = roomId;
+  RoomRightNow.roomName = roomName;
+  
+  // here unsuccessfully 
+  // try to update the last message info
 }
 
 function InputRoomNameArea() {
@@ -98,17 +134,25 @@ async function addNewRoom() {
     })
 
     const result = await response.json();
+    const NewRoomId = result.room_id;
+    RoomName.push({
+      roomId: NewRoomId,
+      roomName: RoomNameInput,
+      lastSender: "",
+      lastContent: "",
+      lastTime: "",
+    })
 
     const chatList = document.getElementsByClassName("chat-list")[0];
     const newRoom = document.createElement("div");
-    
     newRoom.className = "chat-item";
+    newRoom.setAttribute("key", NewRoomId.toString());
     newRoom.innerHTML = `
       <img src="${RoomProfile}" alt="Avatar" class="avatar" />
       <div class="chat-info" >
-        <h3>${RoomNameInput}</h3>
-        <span class="chat-message">New message</span>
-        <span class="chat-time">Time</span>
+      <h3>${RoomNameInput}</h3>
+      <span class="chat-message"></span>
+      <span class="chat-time"></span>
       </div>
     `;
     chatList.appendChild(newRoom);
@@ -118,6 +162,7 @@ async function addNewRoom() {
   }
 
   closeOpenDiv();
+  // RoomEntry();
 }
 
 function openOpenDiv() {
@@ -135,17 +180,6 @@ function closeOpenDiv() {
   (document.getElementsByClassName("RoomNameInput")[0] as HTMLInputElement).value = '';
 }
 
-// 单个聊天房间组件
-interface MessageProps {
-    roomId: number; // room id
-    roomName: string; // room name
-    messages: Array<{
-        profile: number; // profile index
-        sender: string; // sender name
-        content: string; // message content
-        time: number; // message time
-    }>;
-}
 function MessageItem (props: MessageProps) {
   if (props.roomId === 0) {
     return <div className="message-item">Please select a room to chat.</div>;
@@ -261,12 +295,12 @@ function addNewComment(roomId: number, sender: string, content: string) {
 export default function ChatRoom() {
   return (
       <div className="chat-room">
-        <RoomEntry roomId={1} roomName="General" lastSender="Alice" lastContent="Hello!aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" lastTime={Date.now()} />
+        <RoomEntry />
         <MessageItem 
-            roomId={0} 
-            roomName="General" 
+            roomId={RoomRightNow.roomId}
+            roomName={RoomRightNow.roomName}
             messages={[
-                { profile: 2, sender: "Alice", content: "Hello!", time: Date.now() - 60000 }
+                { profile: 2, sender: "Alice", content: RoomRightNow.roomName, time: "Right Now" }
             ]} 
         />
         <InputRoomNameArea />
