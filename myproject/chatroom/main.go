@@ -142,6 +142,10 @@ func AddMessage(c *gin.Context) {
 		"INSERT INTO messages (roomId, profile_id, sender, content, timestamp) VALUES ($1, $2, NOW()) RETURNING message_id",
 		message.RoomId, message.Profile_id, message.Sender, message.Content,
 	).Scan(&messageId)
+	_, err = db.Exec(
+		"UPDATE rooms SET last_sender = $1, last_content = $2, last_time = NOW() WHERE room_id = $3",
+		message.Sender, message.Content, message.RoomId,
+	)
 	if err != nil {
 		c.JSON(500, Response{Code: 500, Msg: "Failed to add message", Data: nil})
 		return
@@ -157,7 +161,34 @@ func AddMessage(c *gin.Context) {
 }
 
 func GetMessageList(c *gin.Context) {
-	// 处理获取消息列表的逻辑
+	roomId := c.Query("roomId")
+	if roomId == "" {
+		c.JSON(400, Response{Code: 400, Msg: "Room ID is required", Data: nil})
+		return
+	}
+
+	rows, err := db.Query("SELECT profile_id, sender, content, time FROM messages WHERE room_id = $1 ORDER BY time ASC", roomId)
+	if err != nil {
+		c.JSON(500, Response{Code: 500, Msg: "Failed to retrieve messages", Data: nil})
+		return
+	}
+	defer rows.Close()
+
+	var messages []Message
+	for rows.Next() {
+		var msg Message
+		if err := rows.Scan(&msg.Profile_id, &msg.Sender, &msg.Content, &msg.Timestamp); err != nil {
+			c.JSON(500, Response{Code: 500, Msg: "Failed to scan message", Data: nil})
+			return
+		}
+		messages = append(messages, msg)
+	}
+
+	c.JSON(200, Response{
+		Code: 0,
+		Msg:  "Messages retrieved successfully",
+		Data: messages,
+	})
 }
 
 func RoomMessageUpdate(c *gin.Context) {
@@ -166,20 +197,22 @@ func RoomMessageUpdate(c *gin.Context) {
 
 func createTable() {
 	query := `
+		CREATE TABLE IF NOT EXISTS rooms (
+			room_id SERIAL PRIMARY KEY,
+			room_name VARCHAR(100) NOT NULL UNIQUE,
+			last_sender VARCHAR(100),
+			last_content TEXT,
+			last_time TIMESTAMP
+		);
+
 		CREATE TABLE IF NOT EXISTS messages (
 			message_id SERIAL PRIMARY KEY,
 			room_id INT NOT NULL,
 			profile_id INT NOT NULL,
 			sender VARCHAR(100) NOT NULL,
 			content TEXT NOT NULL,
-			timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-		);
-		
-		CREATE TABLE IF NOT EXISTS rooms (
-			room_id SERIAL PRIMARY KEY,
-			room_name VARCHAR(100) NOT NULL
-			LAST_MESSAGE TEXT,
-			LAST_MESSAGE_TIME TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			"time" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY (room_id) REFERENCES rooms(room_id)
 		);
 	`
 	_, err := db.Exec(query)

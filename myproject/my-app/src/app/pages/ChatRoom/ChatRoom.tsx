@@ -1,7 +1,7 @@
 'use client';
 
 import "./ChatRoom.css";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 
 // profile
 const Profile = [ 'https://pic4.zhimg.com/v2-c5a0d0d57c1a85c6db56e918707f54a3_r.jpg',
@@ -46,7 +46,7 @@ if (RoomName.length > 0) {
   RoomRightNow.roomName = RoomName[0].roomName;
 }
 
-function RoomEntry () {
+function RoomEntry ({rooms, onRoomClick} : {rooms: RoomEntryProps[], onRoomClick: (roomId: number, roomName: string) => void}) {
   return (
     <div className="chat-room-nav">
       <div className="sidebar-action">
@@ -58,8 +58,8 @@ function RoomEntry () {
       </div>
 
       <div className="chat-list">
-        {RoomName.map((room) => (
-          <div className="chat-item" key={room.roomId} onClick={() => handleRoomClick(room.roomId, room.roomName)}>
+        {rooms.map((room) => (
+          <div className="chat-item" key={room.roomId} onClick={() => onRoomClick(room.roomId, room.roomName)}>
             <img src={RoomProfile} alt="Avatar" className="avatar" />
             <div className="chat-info">
               <h3>{room.roomName}</h3>
@@ -83,11 +83,7 @@ function handleRoomClick(roomId: number, roomName: string) {
 }
 
 function InputRoomNameArea() {
-  const [roomId, setRoomId] = useState(0);
-  function handleRoomIdChange() {
-    setRoomId(roomId + 1);
-  }
-
+  // This component is used to input the new room name
   return (
     <div className="open">
       <div className="roomName-input">
@@ -99,7 +95,6 @@ function InputRoomNameArea() {
           onKeyUpCapture={(e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === 'Enter') {
               addNewRoom();
-              handleRoomIdChange();
             }
             else if (e.key === 'Escape') {
               closeOpenDiv();
@@ -109,7 +104,6 @@ function InputRoomNameArea() {
         <div className="button-container">
           <button className="create-button" onClick={() =>{
             addNewRoom();
-            handleRoomIdChange();
           }}>Submit</button>
           <button className="cancel-button" onClick={closeOpenDiv}>Cancel</button>
         </div>
@@ -292,9 +286,55 @@ function addNewComment(roomId: number, sender: string, content: string) {
 }
 
 export default function ChatRoom() {
+  const [rooms, setRooms] = useState<RoomEntryProps[]>([]);
+  const [currentRoom, setCurrentRoom] = useState<MessageProps | null>(null);
+
+  useEffect(() => {
+    const fetchRooms = async () => {
+      try {
+        const response = await fetch("http://localhost:8080/room/list");
+        const result = await response.json();
+      if (result.code === 0) {
+        setRooms(result.data);
+      }
+      } catch (error) {
+        console.error("Error fetching rooms:", error);
+      }
+    }
+    fetchRooms();
+  }, []);
+
+  useEffect(() => {
+    if(currentRoom?.roomId) {
+      const fetchMessages = async () => {
+        try {
+          const response = await fetch(`http://localhost:8080/room/message/list?room_id=${currentRoom.roomId}`);
+          const result = await response.json();
+          if (result.code === 0) {
+            setCurrentRoom(prevRoom => ({
+              ...prevRoom!,
+              messages: result.data
+            }));
+          }
+        } catch (error) {
+          console.error("Error fetching messages:", error);
+        }
+        fetchMessages();
+      }
+    }
+  }, [currentRoom?.roomId]);
+
+  const handleRoomClick = (roomId: number, roomName: string) => {
+    setCurrentRoom({
+      roomId: roomId,
+      roomName: roomName,
+      messages: []
+    });
+  }
+
   return (
       <div className="chat-room">
-        <RoomEntry />
+        <RoomEntry rooms={rooms} onRoomClick={handleRoomClick}/>
         <MessageItem 
             roomId={RoomRightNow.roomId}
             roomName={RoomRightNow.roomName}
