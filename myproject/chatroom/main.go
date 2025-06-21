@@ -60,6 +60,26 @@ func main() {
 		log.Fatal(err)
 	}
 
+	createTable()
+	var tableExists bool
+	err = db.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM information_schema.tables
+			WHERE table_name = 'rooms'
+		)
+	`).Scan(&tableExists)
+	if err != nil {
+		log.Fatal("Table check failed: ", err)
+	}
+
+	if !tableExists {
+		log.Println("Table 'rooms' not found, creating...")
+		createTable()
+	} else {
+		log.Println("Table 'rooms' already exists")
+	}
+
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
