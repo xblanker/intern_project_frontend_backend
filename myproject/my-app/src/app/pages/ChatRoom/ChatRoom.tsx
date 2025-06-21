@@ -1,6 +1,5 @@
 'use client';
 
-import { METHODS } from "http";
 import "./ChatRoom.css";
 import React, { useState } from "react";
 
@@ -67,7 +66,7 @@ function RoomEntry () {
               <span className="chat-message">{room.lastContent}</span>
               <span className="chat-time"></span>
             </div>
-          </div>
+          </div> 
         ))}
       </div>
     </div>

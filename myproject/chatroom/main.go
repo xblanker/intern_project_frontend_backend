@@ -143,3 +143,28 @@ func GetMessageList(c *gin.Context) {
 func RoomMessageUpdate(c *gin.Context) {
 	// 处理更新房间消息的逻辑
 }
+
+func createTable() {
+	query := `
+		CREATE TABLE IF NOT EXISTS messages (
+			message_id SERIAL PRIMARY KEY,
+			room_id INT NOT NULL,
+			profile_id INT NOT NULL,
+			sender VARCHAR(100) NOT NULL,
+			content TEXT NOT NULL,
+			timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+		
+		CREATE TABLE IF NOT EXISTS rooms (
+			room_id SERIAL PRIMARY KEY,
+			room_name VARCHAR(100) NOT NULL
+			LAST_MESSAGE TEXT,
+			LAST_MESSAGE_TIME TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+	`
+	_, err := db.Exec(query)
+	if err != nil {
+		log.Fatal("Failed to create tables: ", err)
+	}
+	log.Println("Tables created successfully")
+}
