@@ -3,6 +3,8 @@
 import "./ChatRoom.css";
 import React, { useEffect, useState } from "react";
 
+const backEnd:string = "http://10.171.208.94:8080";
+
 // profile
 const Profile = [ 'https://pic4.zhimg.com/v2-c5a0d0d57c1a85c6db56e918707f54a3_r.jpg',
                   'https://pic2.zhimg.com/v2-c2e79191533fdc7fced2f658eef987c9_r.jpg',
@@ -16,9 +18,9 @@ const RoomProfile = 'https://tse1-mm.cn.bing.net/th/id/OIP-C.0KyBJKAdIGi9SAQc_X6
 interface RoomEntryProps {
     roomId: number; // room id
     roomName: string; // room name
-    lastSender: string; // the lasted User name
-    lastContent: string; // content
-    lastTime: string; // the lasted message time
+    lastSender: { String: string, Valid: boolean }; // the lasted User name
+    lastContent: { String: string, Valid: boolean }; // content
+    lastTime: { Time: string, Valid: boolean }; // the lasted message time
 }
 
 // 单个聊天房间组件
@@ -53,7 +55,7 @@ function RoomEntry ({rooms, onRoomClick} : {rooms: RoomEntryProps[], onRoomClick
             <div className="chat-info">
               <h3>{room.roomName}</h3>
               <span className="chat-message">{room.lastContent && room.lastContent.Valid ? room.lastContent.String : ''}</span>
-              <span className="chat-time">{room.lastTime && room.lastTime.Valid ? room.lastTime.String : ''}</span>
+              <span className="chat-time">{room.lastTime && room.lastTime.Valid ? room.lastTime.Time : ''}</span>
             </div>
           </div> 
         ))}
@@ -63,8 +65,14 @@ function RoomEntry ({rooms, onRoomClick} : {rooms: RoomEntryProps[], onRoomClick
   // Button From Uiverse.io by njesenberger
 }
 
-function InputRoomNameArea() {
-  // This component is used to input the new room name
+function InputRoomNameArea({ onAddNewRoom }: { onAddNewRoom: (roomName: string) => void}) {
+  const [roomNameInput, setRoomNameInput] = useState("");
+
+  const handleAddNewRoom = () => {
+    onAddNewRoom(roomNameInput);
+    setRoomNameInput("");
+    closeOpenDiv();
+  }
   return (
     <div className="open">
       <div className="roomName-input">
@@ -72,10 +80,11 @@ function InputRoomNameArea() {
         <input
           type="text"
           className="RoomNameInput"
-          placeholder="Search or start new chat"
+          placeholder="Start new chat"
+          value = {roomNameInput}
           onKeyUpCapture={(e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === 'Enter') {
-              addNewRoom();
+              handleAddNewRoom();
             }
             else if (e.key === 'Escape') {
               closeOpenDiv();
@@ -83,65 +92,12 @@ function InputRoomNameArea() {
           }}
         />
         <div className="button-container">
-          <button className="create-button" onClick={addNewRoom}>Submit</button>
+          <button className="create-button" onClick={handleAddNewRoom}>Submit</button>
           <button className="cancel-button" onClick={closeOpenDiv}>Cancel</button>
         </div>
       </div>
     </div>
   );
-}
-
-async function addNewRoom() {
-  const RoomNameInput = (document.getElementsByClassName("RoomNameInput")[0] as HTMLInputElement).value;
-  debugger;
-  if (RoomNameInput === "") {
-    alert("Please enter a room name.");
-    return;
-  }
-
-  try {
-    const response = await fetch ("http://localhost:8080/room/add", {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomName: RoomNameInput })
-    })
-
-    const result = await response.json();
-    if (result.Code === 500) {
-      alert("Faile to add new room");
-      return
-    }
-    const NewRoomId = result.room_id;
-    RoomName.push({
-      roomId: NewRoomId,
-      roomName: RoomNameInput,
-      lastSender: "",
-      lastContent: "",
-      lastTime: "",
-    })
-
-    const chatList = document.getElementsByClassName("chat-list")[0];
-    const newRoom = document.createElement("div");
-    newRoom.className = "chat-item";
-    newRoom.setAttribute("key", NewRoomId);
-    newRoom.innerHTML = `
-      <img src="${RoomProfile}" alt="Avatar" class="avatar" />
-      <div class="chat-info" >
-      <h3>${RoomNameInput}</h3>
-      <span class="chat-message"></span>
-      <span class="chat-time"></span>
-      </div>
-    `;
-    chatList.appendChild(newRoom);
-  } catch (error) {
-    console.error("Error adding new room:", error);
-    alert("Failed to create room. Please try again.");
-  }
-
-  closeOpenDiv();
-
-  // 加一个刷新的函数
-  // RoomEntry();
 }
 
 function openOpenDiv() {
@@ -159,9 +115,20 @@ function closeOpenDiv() {
   (document.getElementsByClassName("RoomNameInput")[0] as HTMLInputElement).value = '';
 }
 
-function MessageItem (props: MessageProps & { userName: string }) {
+function MessageItem (props: MessageProps & { userName: string; onAddNewComment: (content: string) => void}) {
+  const [inputValue, setInputValue] = useState("");
+
   if (props.roomId === 0) {
     return <div className="message-item">Please select a room to chat.</div>;
+  }
+
+  const handlerSend = () => {
+    if (inputValue.trim() === '') {
+      alert("Message can't be empty");
+      return
+    }
+    props.onAddNewComment(inputValue);
+    setInputValue('');
   }
   return (
     <div className="message-item">
@@ -184,13 +151,19 @@ function MessageItem (props: MessageProps & { userName: string }) {
         ))}
       </div>
       <div className="message-input">
-        <input type="text" placeholder="Type a message..." className="Inputarea" onKeyUpCapture={
+        <input 
+        type="text" 
+        placeholder="Type a message..." 
+        className="Inputarea"
+        value={inputValue}
+        onChange={(e) => setInputValue(e.target.value)}
+        onKeyUpCapture={
           (e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === 'Enter') {
-              addNewComment(props.roomId, props.userName, (document.getElementsByClassName("Inputarea")[0] as HTMLInputElement).value);
+              handlerSend();
             }
         }}/>
-        <button className="send-button" onClick={() => addNewComment(props.roomId, props.userName, (document.getElementsByClassName("Inputarea")[0] as HTMLInputElement).value)}>
+        <button className="send-button" onClick={handlerSend}>
           <div className="svg-wrapper-1">
             <div className="svg-wrapper">
               <svg
@@ -215,62 +188,6 @@ function MessageItem (props: MessageProps & { userName: string }) {
   // From Uiverse.io by adamgiebl
 }
 
-// add new comment
-function addNewComment(roomId: number, sender: string, content: string) {
-    const messageList = document.getElementsByClassName("message-list");
-
-    if (content === "") {
-        alert("Please enter a message before sending.");
-        return;
-    }
-
-    var profileId = 0;
-    if (sender === "蔡徐坤") {
-      profileId = Profile.length - 1;
-    }
-    else {
-      profileId = Math.floor(Math.random() * (Profile.length-1));
-    }
-
-    try {
-      const response = fetch('http://localhost:8080/room/message/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId, profile_id: profileId, sender, content })
-      });
-      response.then(res => res.json()).then(data => {
-        if (data.code !== 0) {
-          alert(`Error: ${data.msg}`);
-          return;
-        }
-        
-        const message = document.createElement("div");
-        message.className = "message";
-        message.innerHTML = `
-            <img src="${Profile[profileId]}" alt="${sender}'s avatar" class="avatar">
-            <div class="message-content">
-                <div class="message-info">
-                    <span class="message-sender">${sender}</span>
-                    <span class="message-time">${new Date().toLocaleTimeString()}</span>
-                </div>
-                <p class="message-text">${content}</p>
-            </div>
-        `;
-
-        (document.getElementsByClassName("Inputarea")[0] as HTMLInputElement).value = '';
-
-        messageList[0].appendChild(message);
-      }).catch(error => {
-        console.error("Error adding new comment:", error);
-        alert("Failed to send message. Please try again.");
-      });
-    }
-    catch (error) {
-        console.error("Error in addNewComment:", error);
-        alert("An error occurred while sending the message.");
-    }
-}
-
 export function ChatRoom({ userName }: { userName: string }) {
   const [rooms, setRooms] = useState<RoomEntryProps[]>([]);
   const [currentRoom, setCurrentRoom] = useState<MessageProps | null>(null);
@@ -278,10 +195,16 @@ export function ChatRoom({ userName }: { userName: string }) {
   useEffect(() => {
     const fetchRooms = async () => {
       try {
-        const response = await fetch("http://localhost:8080/room/list");
+        const response = await fetch(backEnd+"/room/list");
         const result = await response.json();
       if (result.code === 0) {
-        setRooms(result.data);
+        const ferchedRooms = result.data.map((room:any) => ({
+          ...room,
+          lastSender: room.lastSender || { String: '', Valid: false },
+          laseComment: room.lastComment || { String: '', Valid: false },
+          lastTime: room.lastTime || { String: '', Valid: false }
+        }));
+        setRooms(ferchedRooms);
       }
       } catch (error) {
         console.error("Error fetching rooms:", error);
@@ -289,26 +212,6 @@ export function ChatRoom({ userName }: { userName: string }) {
     }
     fetchRooms();
   }, []);
-
-  useEffect(() => {
-    if(currentRoom?.roomId) {
-      const fetchMessages = async () => {
-        try {
-          const response = await fetch(`http://localhost:8080/room/message/list?room_id=${currentRoom.roomId}`);
-          const result = await response.json();
-          if (result.code === 0) {
-            setCurrentRoom(prevRoom => ({
-              ...prevRoom!,
-              messages: result.data
-            }));
-          }
-        } catch (error) {
-          console.error("Error fetching messages:", error);
-        }
-        fetchMessages();
-      }
-    }
-  }, [currentRoom?.roomId]);
 
   const handleRoomClick = async (roomId: number, roomName: string) => {
     setCurrentRoom({
@@ -318,7 +221,7 @@ export function ChatRoom({ userName }: { userName: string }) {
     });
 
     try {
-      const response = await fetch(`http://localhost:8080/room/message/list?roomId=${roomId}`)
+      const response = await fetch(backEnd+`/room/message/list?roomId=${roomId}`)
       const result = await response.json();
 
       if (result.code === 0) {
@@ -341,6 +244,89 @@ export function ChatRoom({ userName }: { userName: string }) {
     }
   }
 
+  async function addNewRoom(roomName: string) {
+    if (roomName.trim() === "") {
+      alert("Please enter a room name.");
+      return;
+    }
+
+    try {
+      const response = await fetch (backEnd + "/room/add", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomName: roomName })
+      })
+
+      const result = await response.json();
+      
+      if (result.room_id > 0) {
+        const newRoom:RoomEntryProps = {
+          roomId: result.RoomId,
+          roomName: roomName,
+          lastSender: { String: '', Valid: false } ,
+          lastContent: { String: '', Valid: false },
+          lastTime: { Time: '', Valid: false },
+        };
+        setRooms(prevRooms => [newRoom, ...prevRooms]);
+      } else {
+        alert("Faile to add a new room" + result.Msg);
+      }
+    } catch (error) {
+        console.error("Error adding new room" + error);
+        alert("Error adding new room.");
+    }
+  }
+
+  const addNewComment = async (content: string) => {
+    if (!currentRoom) 
+      return;
+
+    let profileId = 0;
+    if (userName === '蔡徐坤') {
+      profileId = Profile.length - 1;
+    } else {
+      profileId = Math.floor(Math.random() * (Profile.length-1));
+    }
+
+    try {
+      const response = await fetch(backEnd + '/room/message/add', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          roomId: currentRoom.roomId,
+          profile_id: profileId,
+          sender: userName,
+          content
+        })
+      })
+
+      const result = await response.json();
+      if (result.Code != 0) {
+        alert(`Error: ${result.Msg}`);
+        return;
+      }
+      
+      const newMessage: { profile: number, sender: string, content: string, time: string } = {
+          profile: profileId,
+          sender: userName,
+          content: content,
+          time: new Date().toISOString()
+      };
+
+      setCurrentRoom(prevRoom => {
+          if (!prevRoom) return null;
+          return {
+              ...prevRoom,
+              messages: [...prevRoom.messages, newMessage]
+          };
+      });
+
+    } catch (error) {
+      console.error("Error in addNewComment:", error);
+      alert("An error occurred while sending the message.");
+    }
+  }
+
   return (
       <div className="chat-room">
         <RoomEntry rooms={rooms} onRoomClick={handleRoomClick}/>
@@ -349,8 +335,9 @@ export function ChatRoom({ userName }: { userName: string }) {
             roomName={currentRoom?.roomName || ""}
             messages={currentRoom?.messages || []}
             userName={userName}
+            onAddNewComment={addNewComment}
         />
-        <InputRoomNameArea />
+        <InputRoomNameArea onAddNewRoom={addNewRoom}/>
       </div>
   );
 }
