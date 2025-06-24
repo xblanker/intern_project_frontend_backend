@@ -82,6 +82,7 @@ function InputRoomNameArea({ onAddNewRoom }: { onAddNewRoom: (roomName: string) 
           className="RoomNameInput"
           placeholder="Start new chat"
           value = {roomNameInput}
+          onChange={(e) => setRoomNameInput(e.target.value)}
           onKeyUpCapture={(e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === 'Enter') {
               handleAddNewRoom();
@@ -223,6 +224,7 @@ export function ChatRoom({ userName }: { userName: string }) {
     try {
       const response = await fetch(backEnd+`/room/message/list?roomId=${roomId}`)
       const result = await response.json();
+      debugger;
 
       if (result.code === 0) {
         setCurrentRoom({
@@ -301,7 +303,7 @@ export function ChatRoom({ userName }: { userName: string }) {
       })
 
       const result = await response.json();
-      if (result.Code != 0) {
+      if (result.code != 0) {
         alert(`Error: ${result.Msg}`);
         return;
       }

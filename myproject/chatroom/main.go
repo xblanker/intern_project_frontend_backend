@@ -225,8 +225,8 @@ func AddMessage(c *gin.Context) {
 	}
 
 	query := `
-		INSERT INTO messages (room_id, profile_id, sender, content)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO messages (room_id, profile_id, sender, content, "time")
+		VALUES ($1, $2, $3, $4, NOW())
 		RETURNING message_id
 	`
 	var messageId int
@@ -237,7 +237,7 @@ func AddMessage(c *gin.Context) {
 	}
 
 	_, err = db.Exec(
-		"UPDATE rooms SET last_sender = $1, last_content = $2, last_time = NOW() WHERE room_id = $3",
+		"UPDATE rooms SET  lastSender = $1, lastContent = $2, lastTime = NOW() WHERE room_id = $3",
 		message.Sender, message.Content, message.RoomId,
 	)
 	if err != nil {
