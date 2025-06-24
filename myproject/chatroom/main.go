@@ -4,8 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
+	_ "github.com/lib/pq"
 )
 
 const (
@@ -26,10 +29,11 @@ type Message struct {
 }
 
 type RoomPreviewInfo struct {
-	RoomId          int    `json:"room_id"`
-	RoomName        string `json:"room_name"`
-	LastMessage     string `json:"last_message"`
-	LastMessageTime string `json:"last_message_time"`
+	RoomId      int            `json:"roomId"`
+	RoomName    string         `json:"roomName"`
+	LastSender  sql.NullString `json:"lastSender"`
+	LastContent sql.NullString `json:"lastContent"`
+	LastTime    sql.NullTime   `json:"lastTime"`
 }
 
 type Response struct {
@@ -83,8 +87,15 @@ func main() {
 	router := gin.Default()
 	router.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
 	})
 
 	router.POST("/room/add", AddNewRoom)
@@ -113,8 +124,6 @@ func AddNewRoom(c *gin.Context) {
 	}
 
 	room.RoomId = roomId
-	room.LastMessage = ""
-	room.LastMessageTime = ""
 	c.JSON(200, RoomAddRes{
 		RoomId: room.RoomId,
 	})
@@ -122,42 +131,125 @@ func AddNewRoom(c *gin.Context) {
 }
 
 func GetRoomList(c *gin.Context) {
-
-}
-
-func DeleteRoom(c *gin.Context) {
-
-}
-
-func AddMessage(c *gin.Context) {
-	// 处理添加消息的逻辑
-	var message Message
-	if err := c.ShouldBindJSON(&message); err != nil {
-		c.JSON(400, Response{Code: 400, Msg: "Invalid input", Data: nil})
+	var total int
+	roomCountQuery := "SELECT COUNT(*) FROM rooms"
+	err := db.QueryRow(roomCountQuery).Scan(&total)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code": 500,
+			"msg":  "总数统计失败：" + err.Error(),
+		})
 		return
 	}
 
+	query := `
+			SELECT room_id, room_name, last_sender, last_content, last_time
+			FROM rooms
+			ORDER BY last_time DESC NULLS LAST
+			`
+	args := []interface{}{}
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code": 500,
+			"msg":  "Falie while serch:" + err.Error(),
+		})
+		return
+	}
+	defer rows.Close()
+
+	var roomList []RoomPreviewInfo
+	for rows.Next() {
+		var roomItem RoomPreviewInfo
+		if err := rows.Scan(
+			&roomItem.RoomId,
+			&roomItem.RoomName,
+			&roomItem.LastSender,
+			&roomItem.LastContent,
+			&roomItem.LastTime,
+		); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code": 500,
+				"msg":  "Faile while parsing" + err.Error(),
+			})
+			return
+		}
+		roomList = append(roomList, roomItem)
+	}
+
+	c.JSON(http.StatusOK, Response{
+		Code: 0,
+		Msg:  "Success",
+		Data: roomList,
+	})
+}
+
+func DeleteRoom(c *gin.Context) {
+	roomId, err := strconv.Atoi((c.Query("roomTd")))
+	if err != nil || roomId <= 0 {
+		c.JSON(http.StatusOK, Response{Code: 400, Msg: "Invalid ID"})
+		return
+	}
+
+	result, err := db.Exec("DELETE FROM rooms WHERE roomId = $1", roomId)
+	if err != nil {
+		c.JSON(http.StatusOK, Response{Code: 500, Msg: err.Error()})
+		return
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(http.StatusOK, Response{Code: 400, Msg: "Room not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, Response{
+		Code: 0,
+		Msg:  "Room deleted",
+		Data: nil,
+	})
+}
+
+func AddMessage(c *gin.Context) {
+	var message struct {
+		RoomId    int    `json:"roomId"`
+		ProfileId int    `json:"profile_id"`
+		Sender    string `json:"sender"`
+		Content   string `json:"content"`
+	}
+
+	if err := c.ShouldBindJSON(&message); err != nil {
+		c.JSON(http.StatusBadRequest, Response{Code: 400, Msg: "Invalid input: " + err.Error(), Data: nil})
+		return
+	}
+
+	query := `
+		INSERT INTO messages (room_id, profile_id, sender, content)
+		VALUES ($1, $2, $3, $4)
+		RETURNING message_id
+	`
 	var messageId int
-	err := db.QueryRow(
-		"INSERT INTO messages (roomId, profile_id, sender, content, timestamp) VALUES ($1, $2, NOW()) RETURNING message_id",
-		message.RoomId, message.Profile_id, message.Sender, message.Content,
-	).Scan(&messageId)
+	err := db.QueryRow(query, message.RoomId, message.ProfileId, message.Sender, message.Content).Scan(&messageId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, Response{Code: 500, Msg: "Failed to add message: " + err.Error(), Data: nil})
+		return
+	}
+
 	_, err = db.Exec(
 		"UPDATE rooms SET last_sender = $1, last_content = $2, last_time = NOW() WHERE room_id = $3",
 		message.Sender, message.Content, message.RoomId,
 	)
 	if err != nil {
-		c.JSON(500, Response{Code: 500, Msg: "Failed to add message", Data: nil})
-		return
+		log.Printf("Failed to update room preview: %v", err)
 	}
 
-	message.MessageId = messageId
-	c.JSON(200, Response{
+	c.JSON(http.StatusOK, Response{
 		Code: 0,
 		Msg:  "Message added successfully",
-		Data: message,
+		Data: gin.H{"messageId": messageId},
 	})
-	log.Printf("New message added: %+v", message)
+	log.Printf("New message with ID %d added to room %d", messageId, message.RoomId)
 }
 
 func GetMessageList(c *gin.Context) {

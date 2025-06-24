@@ -1,6 +1,6 @@
 .chat-room {
     display: flex;
-    position: relative;
+    position: fixed;
     width: 100vw;
     height: 100vh;
     box-sizing: border-box;

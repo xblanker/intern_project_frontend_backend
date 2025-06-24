@@ -33,18 +33,7 @@ interface MessageProps {
     }>;
 }
 
-let RoomName: RoomEntryProps[] = [
-    { roomId: 1, roomName: "General", lastSender: "Alice", lastContent: "Hello!aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", lastTime: "" },
-    { roomId: 2, roomName: "Sports", lastSender: "Bob", lastContent: "Did you watch the game last night?", lastTime: "" },
-    { roomId: 3, roomName: "Movies", lastSender: "Charlie", lastContent: "I loved the new movie!", lastTime: "" },
-    { roomId: 4, roomName: "Music", lastSender: "David] ", lastContent: "Have you heard the latest album?", lastTime: "" },
-]
-
-let RoomRightNow: MessageProps = { roomId:0, roomName:"", messages:[{profile: 0, sender: "", content: "", time: ""}]}; // Initialize with default values
-if (RoomName.length > 0) {
-  RoomRightNow.roomId = RoomName[0].roomId; // 默认选中第一个房间
-  RoomRightNow.roomName = RoomName[0].roomName;
-}
+let RoomName: RoomEntryProps[] = []
 
 function RoomEntry ({rooms, onRoomClick} : {rooms: RoomEntryProps[], onRoomClick: (roomId: number, roomName: string) => void}) {
   return (
@@ -63,8 +52,8 @@ function RoomEntry ({rooms, onRoomClick} : {rooms: RoomEntryProps[], onRoomClick
             <img src={RoomProfile} alt="Avatar" className="avatar" />
             <div className="chat-info">
               <h3>{room.roomName}</h3>
-              <span className="chat-message">{room.lastContent}</span>
-              <span className="chat-time"></span>
+              <span className="chat-message">{room.lastContent && room.lastContent.Valid ? room.lastContent.String : ''}</span>
+              <span className="chat-time">{room.lastTime && room.lastTime.Valid ? room.lastTime.String : ''}</span>
             </div>
           </div> 
         ))}
@@ -72,14 +61,6 @@ function RoomEntry ({rooms, onRoomClick} : {rooms: RoomEntryProps[], onRoomClick
     </div>
   ); 
   // Button From Uiverse.io by njesenberger
-}
-
-function handleRoomClick(roomId: number, roomName: string) {
-  RoomRightNow.roomId = roomId;
-  RoomRightNow.roomName = roomName;
-  
-  // here unsuccessfully 
-  // try to update the last message info
 }
 
 function InputRoomNameArea() {
@@ -102,9 +83,7 @@ function InputRoomNameArea() {
           }}
         />
         <div className="button-container">
-          <button className="create-button" onClick={() =>{
-            addNewRoom();
-          }}>Submit</button>
+          <button className="create-button" onClick={addNewRoom}>Submit</button>
           <button className="cancel-button" onClick={closeOpenDiv}>Cancel</button>
         </div>
       </div>
@@ -114,6 +93,7 @@ function InputRoomNameArea() {
 
 async function addNewRoom() {
   const RoomNameInput = (document.getElementsByClassName("RoomNameInput")[0] as HTMLInputElement).value;
+  debugger;
   if (RoomNameInput === "") {
     alert("Please enter a room name.");
     return;
@@ -123,10 +103,14 @@ async function addNewRoom() {
     const response = await fetch ("http://localhost:8080/room/add", {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ room_name: RoomNameInput })
+      body: JSON.stringify({ roomName: RoomNameInput })
     })
 
     const result = await response.json();
+    if (result.Code === 500) {
+      alert("Faile to add new room");
+      return
+    }
     const NewRoomId = result.room_id;
     RoomName.push({
       roomId: NewRoomId,
@@ -139,7 +123,7 @@ async function addNewRoom() {
     const chatList = document.getElementsByClassName("chat-list")[0];
     const newRoom = document.createElement("div");
     newRoom.className = "chat-item";
-    newRoom.setAttribute("key", NewRoomId.toString());
+    newRoom.setAttribute("key", NewRoomId);
     newRoom.innerHTML = `
       <img src="${RoomProfile}" alt="Avatar" class="avatar" />
       <div class="chat-info" >
@@ -155,6 +139,8 @@ async function addNewRoom() {
   }
 
   closeOpenDiv();
+
+  // 加一个刷新的函数
   // RoomEntry();
 }
 
@@ -173,7 +159,7 @@ function closeOpenDiv() {
   (document.getElementsByClassName("RoomNameInput")[0] as HTMLInputElement).value = '';
 }
 
-function MessageItem (props: MessageProps) {
+function MessageItem (props: MessageProps & { userName: string }) {
   if (props.roomId === 0) {
     return <div className="message-item">Please select a room to chat.</div>;
   }
@@ -201,10 +187,10 @@ function MessageItem (props: MessageProps) {
         <input type="text" placeholder="Type a message..." className="Inputarea" onKeyUpCapture={
           (e: React.KeyboardEvent<HTMLInputElement>) => {
             if (e.key === 'Enter') {
-              addNewComment(props.roomId, "蔡徐坤", (e.target as HTMLInputElement).value);
+              addNewComment(props.roomId, props.userName, (document.getElementsByClassName("Inputarea")[0] as HTMLInputElement).value);
             }
         }}/>
-        <button className="send-button" onClick={() => addNewComment(props.roomId, "蔡徐坤", (document.getElementsByClassName("Inputarea")[0] as HTMLInputElement).value)}>
+        <button className="send-button" onClick={() => addNewComment(props.roomId, props.userName, (document.getElementsByClassName("Inputarea")[0] as HTMLInputElement).value)}>
           <div className="svg-wrapper-1">
             <div className="svg-wrapper">
               <svg
@@ -285,7 +271,7 @@ function addNewComment(roomId: number, sender: string, content: string) {
     }
 }
 
-export default function ChatRoom() {
+export function ChatRoom({ userName }: { userName: string }) {
   const [rooms, setRooms] = useState<RoomEntryProps[]>([]);
   const [currentRoom, setCurrentRoom] = useState<MessageProps | null>(null);
 
@@ -324,23 +310,45 @@ export default function ChatRoom() {
     }
   }, [currentRoom?.roomId]);
 
-  const handleRoomClick = (roomId: number, roomName: string) => {
+  const handleRoomClick = async (roomId: number, roomName: string) => {
     setCurrentRoom({
       roomId: roomId,
       roomName: roomName,
       messages: []
     });
+
+    try {
+      const response = await fetch(`http://localhost:8080/room/message/list?roomId=${roomId}`)
+      const result = await response.json();
+
+      if (result.code === 0) {
+        setCurrentRoom({
+          roomId: roomId,
+          roomName: roomName,
+          messages: result.data || []
+        });
+      } else {
+        alert(`Error fetching messages: ${result.msg}`);
+        setCurrentRoom({
+          roomId: roomId,
+          roomName: roomName,
+          messages: []
+        });
+      }
+    } catch (error){
+        console.error("Error fetching messages:", error);
+        alert("Failed to fetch messages. See console for details.");
+    }
   }
 
   return (
       <div className="chat-room">
         <RoomEntry rooms={rooms} onRoomClick={handleRoomClick}/>
         <MessageItem 
-            roomId={RoomRightNow.roomId}
-            roomName={RoomRightNow.roomName}
-            messages={[
-                { profile: 2, sender: "Alice", content: RoomRightNow.roomName, time: "Right Now" }
-            ]} 
+            roomId={currentRoom?.roomId || 0}
+            roomName={currentRoom?.roomName || ""}
+            messages={currentRoom?.messages || []}
+            userName={userName}
         />
         <InputRoomNameArea />
       </div>
