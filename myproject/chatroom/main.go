@@ -20,12 +20,12 @@ const (
 )
 
 type Message struct {
-	MessageId  int    `json:"message_id"`
-	RoomId     int    `json:"room_id"`
-	Profile_id int    `json:"profile_id"`
-	Sender     string `json:"sender"`
-	Content    string `json:"content"`
-	Timestamp  string `json:"timestamp"`
+	MessageId int    `json:"message_id"`
+	RoomId    int    `json:"room_id"`
+	Profile   int    `json:"profile"`
+	Sender    string `json:"sender"`
+	Content   string `json:"content"`
+	Time      string `json:"time"`
 }
 
 type RoomPreviewInfo struct {
@@ -214,7 +214,7 @@ func DeleteRoom(c *gin.Context) {
 func AddMessage(c *gin.Context) {
 	var message struct {
 		RoomId    int    `json:"roomId"`
-		ProfileId int    `json:"profile_id"`
+		ProfileId int    `json:"profile"`
 		Sender    string `json:"sender"`
 		Content   string `json:"content"`
 	}
@@ -225,7 +225,7 @@ func AddMessage(c *gin.Context) {
 	}
 
 	query := `
-		INSERT INTO messages (room_id, profile_id, sender, content, "time")
+		INSERT INTO messages (room_id, profile, sender, content, "time")
 		VALUES ($1, $2, $3, $4, NOW())
 		RETURNING message_id
 	`
@@ -242,6 +242,8 @@ func AddMessage(c *gin.Context) {
 	)
 	if err != nil {
 		log.Printf("Failed to update room preview: %v", err)
+		c.JSON(http.StatusInternalServerError, Response{Code: 500, Msg: "Failed to updata lastest message: " + err.Error(), Data: nil})
+		return
 	}
 
 	c.JSON(http.StatusOK, Response{
@@ -259,7 +261,7 @@ func GetMessageList(c *gin.Context) {
 		return
 	}
 
-	rows, err := db.Query("SELECT profile_id, sender, content, time FROM messages WHERE room_id = $1 ORDER BY time ASC", roomId)
+	rows, err := db.Query("SELECT profile, sender, content, time FROM messages WHERE room_id = $1 ORDER BY time ASC", roomId)
 	if err != nil {
 		c.JSON(500, Response{Code: 500, Msg: "Failed to retrieve messages", Data: nil})
 		return
@@ -269,7 +271,7 @@ func GetMessageList(c *gin.Context) {
 	var messages []Message
 	for rows.Next() {
 		var msg Message
-		if err := rows.Scan(&msg.Profile_id, &msg.Sender, &msg.Content, &msg.Timestamp); err != nil {
+		if err := rows.Scan(&msg.Profile, &msg.Sender, &msg.Content, &msg.Time); err != nil {
 			c.JSON(500, Response{Code: 500, Msg: "Failed to scan message", Data: nil})
 			return
 		}
@@ -300,7 +302,7 @@ func createTable() {
 		CREATE TABLE IF NOT EXISTS messages (
 			message_id SERIAL PRIMARY KEY,
 			room_id INT NOT NULL,
-			profile_id INT NOT NULL,
+			profile INT NOT NULL,
 			sender VARCHAR(100) NOT NULL,
 			content TEXT NOT NULL,
 			"time" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -5,7 +5,6 @@ import React, { useEffect, useState } from "react";
 
 const backEnd:string = "http://10.171.208.94:8080";
 
-// profile
 const Profile = [ 'https://pic4.zhimg.com/v2-c5a0d0d57c1a85c6db56e918707f54a3_r.jpg',
                   'https://pic2.zhimg.com/v2-c2e79191533fdc7fced2f658eef987c9_r.jpg',
                   'https://pic4.zhimg.com/v2-bf5f58e7b583cd69ac228db9fdff377f_r.jpg',
@@ -16,22 +15,21 @@ const Profile = [ 'https://pic4.zhimg.com/v2-c5a0d0d57c1a85c6db56e918707f54a3_r.
 const RoomProfile = 'https://tse1-mm.cn.bing.net/th/id/OIP-C.0KyBJKAdIGi9SAQc_X62tQHaLr?cb=thvnextc2&rs=1&pid=ImgDetMain';
 
 interface RoomEntryProps {
-    roomId: number; // room id
-    roomName: string; // room name
-    lastSender: { String: string, Valid: boolean }; // the lasted User name
-    lastContent: { String: string, Valid: boolean }; // content
-    lastTime: { Time: string, Valid: boolean }; // the lasted message time
+    roomId: number;
+    roomName: string;
+    lastSender: { String: string, Valid: boolean };
+    lastContent: { String: string, Valid: boolean };
+    lastTime: { Time: string, Valid: boolean };
 }
 
-// 单个聊天房间组件
 interface MessageProps {
-    roomId: number; // room id
-    roomName: string; // room name
+    roomId: number;
+    roomName: string;
     messages: Array<{
-        profile: number; // profile index
-        sender: string; // sender name
-        content: string; // message content
-        time: string; // message time
+        profile: number;
+        sender: string;
+        content: string;
+        time: string;
     }>;
 }
 
@@ -55,7 +53,7 @@ function RoomEntry ({rooms, onRoomClick} : {rooms: RoomEntryProps[], onRoomClick
             <div className="chat-info">
               <h3>{room.roomName}</h3>
               <span className="chat-message">{room.lastContent && room.lastContent.Valid ? room.lastContent.String : ''}</span>
-              <span className="chat-time">{room.lastTime && room.lastTime.Valid ? room.lastTime.Time : ''}</span>
+              <span className="chat-time">{room.lastTime && room.lastTime.Valid ? formatTimeToHoursMinutes(room.lastTime.Time) : ''}</span>
             </div>
           </div> 
         ))}
@@ -63,6 +61,13 @@ function RoomEntry ({rooms, onRoomClick} : {rooms: RoomEntryProps[], onRoomClick
     </div>
   ); 
   // Button From Uiverse.io by njesenberger
+}
+
+function formatTimeToHoursMinutes(isoString: string) {
+  const date = new Date(isoString);
+  const hours = String(date.getHours()).padStart(2, '0'); // 确保两位数
+  const minutes = String(date.getMinutes()).padStart(2, '0'); // 确保两位数
+  return `${hours}:${minutes}`;
 }
 
 function InputRoomNameArea({ onAddNewRoom }: { onAddNewRoom: (roomName: string) => void}) {
@@ -116,7 +121,7 @@ function closeOpenDiv() {
   (document.getElementsByClassName("RoomNameInput")[0] as HTMLInputElement).value = '';
 }
 
-function MessageItem (props: MessageProps & { userName: string; onAddNewComment: (content: string) => void}) {
+function MessageItem (props: MessageProps & { onAddNewComment: (content: string) => void}) {
   const [inputValue, setInputValue] = useState("");
 
   if (props.roomId === 0) {
@@ -144,7 +149,7 @@ function MessageItem (props: MessageProps & { userName: string; onAddNewComment:
             <div className="message-content">
               <div className="message-info">
                 <span className="message-sender">{msg.sender}</span>
-                <span className="message-time">{new Date(msg.time).toLocaleTimeString()}</span>
+                <span className="message-time">{formatTimeToHoursMinutes(msg.time)}</span>
               </div>
               <p className="message-text">{msg.content}</p>
             </div>
@@ -225,7 +230,6 @@ export function ChatRoom({ userName }: { userName: string }) {
       const response = await fetch(backEnd+`/room/message/list?roomId=${roomId}`)
       const result = await response.json();
       debugger;
-
       if (result.code === 0) {
         setCurrentRoom({
           roomId: roomId,
@@ -336,7 +340,6 @@ export function ChatRoom({ userName }: { userName: string }) {
             roomId={currentRoom?.roomId || 0}
             roomName={currentRoom?.roomName || ""}
             messages={currentRoom?.messages || []}
-            userName={userName}
             onAddNewComment={addNewComment}
         />
         <InputRoomNameArea onAddNewRoom={addNewRoom}/>
