@@ -224,6 +224,7 @@ func AddMessage(c *gin.Context) {
 		return
 	}
 
+	// 写入评论
 	query := `
 		INSERT INTO messages (room_id, profile, sender, content, "time")
 		VALUES ($1, $2, $3, $4, NOW())
@@ -236,8 +237,9 @@ func AddMessage(c *gin.Context) {
 		return
 	}
 
+	// 更新room
 	_, err = db.Exec(
-		"UPDATE rooms SET  lastSender = $1, lastContent = $2, lastTime = NOW() WHERE room_id = $3",
+		"UPDATE rooms SET  last_sender = $1, last_content = $2, last_time = NOW() WHERE room_id = $3",
 		message.Sender, message.Content, message.RoomId,
 	)
 	if err != nil {

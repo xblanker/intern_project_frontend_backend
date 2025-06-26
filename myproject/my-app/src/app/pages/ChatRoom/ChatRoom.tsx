@@ -3,7 +3,7 @@
 import "./ChatRoom.css";
 import React, { useEffect, useState } from "react";
 
-const backEnd:string = "http://10.171.208.94:8080";
+const backEnd:string = "http://localhost:8080";
 
 const Profile = [ 'https://pic4.zhimg.com/v2-c5a0d0d57c1a85c6db56e918707f54a3_r.jpg',
                   'https://pic2.zhimg.com/v2-c2e79191533fdc7fced2f658eef987c9_r.jpg',
@@ -33,8 +33,6 @@ interface MessageProps {
     }>;
 }
 
-let RoomName: RoomEntryProps[] = []
-
 function RoomEntry ({rooms, onRoomClick} : {rooms: RoomEntryProps[], onRoomClick: (roomId: number, roomName: string) => void}) {
   return (
     <div className="chat-room-nav">
@@ -52,8 +50,10 @@ function RoomEntry ({rooms, onRoomClick} : {rooms: RoomEntryProps[], onRoomClick
             <img src={RoomProfile} alt="Avatar" className="avatar" />
             <div className="chat-info">
               <h3>{room.roomName}</h3>
-              <span className="chat-message">{room.lastContent && room.lastContent.Valid ? room.lastContent.String : ''}</span>
-              <span className="chat-time">{room.lastTime && room.lastTime.Valid ? formatTimeToHoursMinutes(room.lastTime.Time) : ''}</span>
+              <span className="chat-message">
+                {room.lastSender.Valid ? room.lastSender.String : ''}:
+                {room.lastContent.Valid ? room.lastContent.String : ''}</span>
+              <span className="chat-time">{room.lastTime.Valid ? formatTimeToHoursMinutes(room.lastTime.Time) : ''}</span>
             </div>
           </div> 
         ))}
@@ -307,6 +307,7 @@ export function ChatRoom({ userName }: { userName: string }) {
       })
 
       const result = await response.json();
+      debugger;
       if (result.code != 0) {
         alert(`Error: ${result.Msg}`);
         return;
