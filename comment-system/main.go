@@ -81,7 +81,6 @@ func main() {
 	log.Fatal(router.Run(":8080"))
 }
 
-// 新增表创建函数
 func createTable() {
 	query := `
         CREATE TABLE IF NOT EXISTS comments (

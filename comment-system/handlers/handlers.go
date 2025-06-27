@@ -29,74 +29,46 @@ type Response struct {
 
 // 获取评论
 func GetCommentsHandler(c *gin.Context) {
-	// 参数验证
-	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
-	if err != nil || page < 1 {
+	pageStr := c.DefaultQuery("page", "1")
+	sizeStr := c.DefaultQuery("size", "10")
+	page, _ := strconv.Atoi(pageStr)
+	size, _ := strconv.Atoi(sizeStr)
+	if page < 1 {
 		page = 1
 	}
 
-	size, err := strconv.Atoi(c.DefaultQuery("size", "10"))
-	if err != nil || size < -1 {
-		size = 10
-	}
+	comments := make([]Comment, 0)
+	var total int64
 
-	// 查询总数
-	var total int
-	countQuery := "SELECT COUNT(*) FROM comments"
-	err = db.QueryRow(countQuery).Scan(&total)
+	// 统计总数
+	err := db.QueryRow("SELECT COUNT(*) FROM comments").Scan(&total)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code": 500,
-			"msg":  "查询总数失败: " + err.Error(),
-		})
+		c.JSON(http.StatusOK, Response{Code: 500, Msg: err.Error()})
 		return
 	}
 
-	// 构建查询
-	query := "SELECT id, name, content, TO_CHAR(created_at, 'YYYY-MM-DD HH24:MI') AS created_at FROM comments"
-	args := []interface{}{}
-
-	// 始终排序
-	query += " ORDER BY created_at DESC"
-
-	// 分页处理
+	var rows *sql.Rows
 	if size != -1 {
 		offset := (page - 1) * size
-		query += " LIMIT $1 OFFSET $2"
-		args = append(args, size, offset)
+		rows, err = db.Query("SELECT id, name, content, created_at FROM comments ORDER BY created_at ASC LIMIT $1 OFFSET $2", size, offset)
+	} else {
+		rows, err = db.Query("SELECT id, name, content, created_at FROM comments ORDER BY created_at ASC")
 	}
-
-	// 执行查询
-	rows, err := db.Query(query, args...)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"code": 500,
-			"msg":  "查询评论失败: " + err.Error(),
-		})
+		c.JSON(http.StatusOK, Response{Code: 500, Msg: err.Error()})
 		return
 	}
 	defer rows.Close()
 
-	// 处理结果
-	var comments []Comment
 	for rows.Next() {
 		var comment Comment
-		if err := rows.Scan(
-			&comment.ID,
-			&comment.Name,
-			&comment.Content,
-			&comment.CreatedAt,
-		); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"code": 500,
-				"msg":  "解析评论失败: " + err.Error(),
-			})
+		if err := rows.Scan(&comment.ID, &comment.Name, &comment.Content, &comment.CreatedAt); err != nil {
+			c.JSON(http.StatusOK, Response{Code: 500, Msg: err.Error()})
 			return
 		}
 		comments = append(comments, comment)
 	}
 
-	// 返回标准响应结构
 	c.JSON(http.StatusOK, gin.H{
 		"code": 0,
 		"msg":  "success",
