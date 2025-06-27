@@ -1,3 +1,5 @@
+import { COMMENT_ADD } from "./assets/const";
+
 async function AddComment({ name, onSuccess }: { name: string; onSuccess: () => void; }) {
   const textInput = document.getElementById('textInput') as HTMLInputElement;
   const content = textInput.value;
@@ -11,7 +13,7 @@ async function AddComment({ name, onSuccess }: { name: string; onSuccess: () => 
   }
 
   try {
-    const response = await fetch('http://localhost:8080/comment/add', {
+    const response = await fetch(COMMENT_ADD, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, content, created_at: new Date().toISOString() })

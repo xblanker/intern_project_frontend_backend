@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { COMMENT_GET, COMMENT_DEL } from './assets/const'
 
 function useInterval(callback: () => void, delay: number | null) {
   const savedCallback = useRef<() => void>(undefined);
@@ -37,7 +38,7 @@ export function CommentSection({ refreshTrigger }: { refreshTrigger: number }) {
 
     const loadComments = async (page: number) => {
         try {
-            const response = await fetch(`http://localhost:8080/comment/get?page=${page}&size=${pageSize}`);
+            const response = await fetch(COMMENT_GET + `?page=${page}&size=${pageSize}`);
             const result = await response.json();
 
             if (result.code !== 0) throw new Error(result.msg);
@@ -53,7 +54,7 @@ export function CommentSection({ refreshTrigger }: { refreshTrigger: number }) {
         if (!confirm('确定要删除这条评论吗？')) 
             return;
         try {
-            const response = await fetch(`http://localhost:8080/comment/delete?id=${commentId}`, { 
+            const response = await fetch(COMMENT_DEL + `?id=${commentId}`, { 
                 method: 'POST' 
             });
             const result = await response.json();
