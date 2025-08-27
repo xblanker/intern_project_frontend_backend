@@ -1,3 +1,5 @@
-export const COMMENT_ADD: string = 'http://localhost:8080/comment/add'
-export const COMMENT_GET: string = 'http://localhost:8080/comment/get'
-export const COMMENT_DEL: string = 'http://localhost:8080/comment/delete'
+const IP: string = 'http://10.197.150.54:8080'
+
+export const COMMENT_ADD: string = IP + '/comment/add'
+export const COMMENT_GET: string = IP + '/comment/get'
+export const COMMENT_DEL: string = IP + '/comment/delete'

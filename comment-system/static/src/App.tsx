@@ -16,9 +16,9 @@ async function AddComment({ name, onSuccess }: { name: string; onSuccess: () => 
     const response = await fetch(COMMENT_ADD, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, content, created_at: new Date().toISOString() })
+      body: JSON.stringify({ name, content })
     });
-
+    
     const result = await response.json();
     if (result.code !== 0) {
       alert(`操作失败: ${result.msg}`);
@@ -28,7 +28,6 @@ async function AddComment({ name, onSuccess }: { name: string; onSuccess: () => 
     textInput.value = '';
     (document.getElementById('nameInput') as HTMLInputElement).value = '';
     onSuccess();
-    
   } catch (error) {
     console.error('添加评论失败:', error);
   }
