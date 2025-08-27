@@ -98,13 +98,54 @@ func main() {
 		c.Next()
 	})
 
+	router.POST("/register", Register)
+	router.POST("/login", Login)
 	router.POST("/room/add", AddNewRoom)
 	router.GET("/room/list", GetRoomList)
 	router.POST("/room/delete", DeleteRoom)
 	router.POST("/room/message/add", AddMessage)
 	router.GET("/room/message/list", GetMessageList)
 	router.PUT("/room/message/update", RoomMessageUpdate)
+	router.PUT("/room/rename", RoomRename)
 	router.Run(":8080")
+}
+
+func Register(c *gin.Context) {
+	userName := c.Query("userName")
+	password := c.Query("password")
+
+	var roomId int
+	err := db.QueryRow(
+		"INSERT INTO users (username, password) VALUES ($1, $2) RETURNING user_id",
+		userName, password,
+	).Scan(&roomId)
+	if err != nil {
+		c.JSON(500, Response{Code: 500, Msg: "注册失败", Data: nil})
+		return
+	}
+
+	log.Printf("New user registered: %s with ID %d", userName, roomId)
+
+	c.JSON(200, Response{Code: 0, Msg: "注册成功", Data: nil})
+}
+
+func Login(c *gin.Context) {
+	userName := c.Query("userName")
+	password := c.Query("password")
+
+	var userId int
+	err := db.QueryRow(
+		"SELECT user_id FROM users WHERE username = $1 AND password = $2",
+		userName, password,
+	).Scan(&userId)
+	if err != nil {
+		c.JSON(401, Response{Code: 401, Msg: "账号或密码错误", Data: nil})
+		return
+	}
+
+	log.Printf("User logged in: %s with ID %d", userName, userId)
+
+	c.JSON(200, Response{Code: 0, Msg: "登录成功", Data: nil})
 }
 
 func AddNewRoom(c *gin.Context) {
@@ -186,27 +227,27 @@ func GetRoomList(c *gin.Context) {
 }
 
 func DeleteRoom(c *gin.Context) {
-	roomId, err := strconv.Atoi((c.Query("roomTd")))
-	if err != nil || roomId <= 0 {
-		c.JSON(http.StatusOK, Response{Code: 400, Msg: "Invalid ID"})
+	roomId := c.Query("roomId")
+	if roomId == "" {
+		c.JSON(400, Response{Code: 400, Msg: "Room ID is required", Data: nil})
 		return
 	}
 
-	result, err := db.Exec("DELETE FROM rooms WHERE roomId = $1", roomId)
+	_, err := db.Exec("DELETE FROM messages WHERE room_id = $1", roomId)
 	if err != nil {
-		c.JSON(http.StatusOK, Response{Code: 500, Msg: err.Error()})
+		c.JSON(500, Response{Code: 500, Msg: "Failed to delete messages in room: " + err.Error(), Data: nil})
 		return
 	}
 
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected == 0 {
-		c.JSON(http.StatusOK, Response{Code: 400, Msg: "Room not found"})
+	_, err_ := db.Exec("DELETE FROM rooms WHERE room_id = $1", roomId)
+	if err_ != nil {
+		c.JSON(500, Response{Code: 500, Msg: "Failed to delete room: " + err_.Error(), Data: nil})
 		return
 	}
 
-	c.JSON(http.StatusOK, Response{
+	c.JSON(200, Response{
 		Code: 0,
-		Msg:  "Room deleted",
+		Msg:  "Room deleted successfully",
 		Data: nil,
 	})
 }
@@ -287,6 +328,34 @@ func GetMessageList(c *gin.Context) {
 	})
 }
 
+func RoomRename(c *gin.Context) {
+	roomId, err := strconv.Atoi(c.Query("roomId"))
+	if err != nil || roomId <= 0 {
+		c.JSON(http.StatusOK, Response{Code: 400, Msg: "Invalid room ID"})
+		return
+	}
+
+	var newName struct {
+		RoomName string `json:"roomName"`
+	}
+	if err := c.ShouldBindJSON(&newName); err != nil {
+		c.JSON(http.StatusBadRequest, Response{Code: 400, Msg: "Invalid input: " + err.Error(), Data: nil})
+		return
+	}
+
+	_, err = db.Exec("UPDATE rooms SET room_name = $1 WHERE room_id = $2", newName.RoomName, roomId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, Response{Code: 500, Msg: "Failed to rename room: " + err.Error(), Data: nil})
+		return
+	}
+
+	c.JSON(http.StatusOK, Response{
+		Code: 0,
+		Msg:  "Room renamed successfully",
+		Data: nil,
+	})
+}
+
 func RoomMessageUpdate(c *gin.Context) {
 	// 处理更新房间消息的逻辑
 }
@@ -309,6 +378,12 @@ func createTable() {
 			content TEXT NOT NULL,
 			"time" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			FOREIGN KEY (room_id) REFERENCES rooms(room_id)
+		);
+
+		CREATE TABLE IF NOT EXISTS users (
+			user_id SERIAL PRIMARY KEY,
+			username VARCHAR(100) NOT NULL UNIQUE,
+			password VARCHAR(100) NOT NULL
 		);
 	`
 	_, err := db.Exec(query)

@@ -1,10 +1,10 @@
-*
+/*
 {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
     font-family: 'Poppins', sans-serif;
-}
+} */
 
 .SetName-Body
 {
@@ -16,7 +16,7 @@
     min-height: 100vh;
     width: 100vw;
     background-size: cover;
-    background: url('../../public/SetbackGround.jpg') no-repeat center;
+    background: url('../public/SetbackGround.jpg') no-repeat center;
 }
 
 .login-box
@@ -33,7 +33,7 @@
     backdrop-filter: blur(15px);
 }
 
-h2
+.setname-h2
 {
     font-size: 2em;
     color: white;
@@ -73,7 +73,7 @@ h2
     border: none;
     outline: none;
     background-color: transparent;
-    color: white;
+    color: black;
     font-size: 1em;
     padding: 0 35px 0 5px;
 }
@@ -104,4 +104,24 @@ h2
 .SetName-button:hover
 {
     background-color: lightgray;
+}
+
+.register_link
+{
+    font-size: .9em;
+    text-align: center;
+    color: white;
+    margin: 20px 0 10px 0;
+
+    a
+    {
+        text-decoration: none;
+        color: white;
+        font-weight: 600;
+    }
+
+    a:hover
+    {
+        text-decoration: underline;
+    }
 }

@@ -1,24 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ChatRoom } from "./pages/ChatRoom/ChatRoom";
-import { SetName } from './pages/SetName/SetName';
+import React from 'react';
+import SetName from './SetName/page';
 import "./globals.css";
+import { useRouter } from 'next/navigation';
 
 export default function Page() {
-  const [userName, setUserName] = useState('');
+  const router = useRouter();
 
   const handleLogin = (name: string) => {
-    setUserName(name);
+    localStorage.setItem('userName', name);
+    router.push('/ChatRoom');
   };
 
   return (
     <div className='root'>
-      {!userName ? (
-        <SetName onLogin={handleLogin} />
-      ) : (
-        <ChatRoom userName={userName} />
-      )}
+      <SetName onLogin={handleLogin} />
     </div>
   );
 }
