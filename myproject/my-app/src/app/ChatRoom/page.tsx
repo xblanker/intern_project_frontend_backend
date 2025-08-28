@@ -242,7 +242,7 @@ function MessageItem (props: MessageProps & { onAddNewComment: (content: string)
   // From Uiverse.io by adamgiebl
 }
 
-export function ChatRoomComponent({ userName }: { userName: string }) {
+function ChatRoomComponent({ userName }: { userName: string }) {
   const [rooms, setRooms] = useState<RoomEntryProps[]>([]);
   const [currentRoom, setCurrentRoom] = useState<MessageProps | null>(null);
   

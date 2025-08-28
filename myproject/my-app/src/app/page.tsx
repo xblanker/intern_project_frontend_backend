@@ -1,21 +1,15 @@
 'use client';
 
-import React from 'react';
-import SetName from './SetName/page';
-import "./globals.css";
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import "./globals.css";
 
 export default function Page() {
   const router = useRouter();
 
-  const handleLogin = (name: string) => {
-    localStorage.setItem('userName', name);
-    router.push('/ChatRoom');
-  };
+  useEffect(() => {
+    router.replace('/SetName');
+  }, [router]);
 
-  return (
-    <div className='root'>
-      <SetName onLogin={handleLogin} />
-    </div>
-  );
+  return null;
 }

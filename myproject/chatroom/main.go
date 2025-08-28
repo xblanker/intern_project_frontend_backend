@@ -5,19 +5,29 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 )
 
-const (
-	host     = "localhost"
-	port     = 5432
-	user     = "chat_room_user"
-	password = "secure_password"
-	dbname   = "chat_room_db"
-)
+// Helper to get env var or default
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
+
+// Helper to get env var as int or default
+func getEnvAsInt(name string, defaultVal int) int {
+	valueStr := getEnv(name, "")
+	if value, err := strconv.Atoi(valueStr); err == nil {
+		return value
+	}
+	return defaultVal
+}
 
 type Message struct {
 	MessageId int    `json:"message_id"`
@@ -49,6 +59,12 @@ type RoomAddRes struct {
 var db *sql.DB
 
 func main() {
+	host := getEnv("DB_HOST", "localhost")
+	port := getEnvAsInt("DB_PORT", 5432)
+	user := getEnv("DB_USER", "chat_room_user")
+	password := getEnv("DB_PASSWORD", "secure_password")
+	dbname := getEnv("DB_NAME", "chat_room_db")
+
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
 		host, port, user, password, dbname)
 

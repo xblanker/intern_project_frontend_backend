@@ -3,14 +3,16 @@
 import styles from"./Register.module.css"
 import { MdLock, MdPerson } from "react-icons/md";
 import { useState } from "react";
+import { useRouter } from 'next/navigation';
 
 const backEnd:string = "http://localhost:8080";
 
-export default function Register({ onLogin }: { onLogin: (name: string) => void }) {
+export default function Register() {
     const [userName, setUserName] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [passwordError, setPasswordError] = useState('');
+    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -40,10 +42,11 @@ export default function Register({ onLogin }: { onLogin: (name: string) => void 
                 throw new Error('Failed to register');
             }
 
-            const data = await response.json();
-            onLogin(data.userName);
+            alert('Registration successful! Redirecting to login page.');
+            router.push('/SetName');
         } catch (error) {
             console.error(error);
+            setPasswordError('Registration failed. Please try again.');
         }
     }
     return (
@@ -65,9 +68,9 @@ export default function Register({ onLogin }: { onLogin: (name: string) => void 
                         <span className={styles["icon"]}>
                             <MdLock />
                         </span>
-                        <input 
-                            type="password" 
-                            required 
+                        <input
+                            type="password"
+                            required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)} />
                         <label>Password</label>
@@ -76,9 +79,9 @@ export default function Register({ onLogin }: { onLogin: (name: string) => void 
                         <span className={styles["icon"]}>
                             <MdLock />
                         </span>
-                        <input 
-                            type="password" 
-                            required 
+                        <input
+                            type="password"
+                            required
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)} />
                         <label>Confirm Password</label>

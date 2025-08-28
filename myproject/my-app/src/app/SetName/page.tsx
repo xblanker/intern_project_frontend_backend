@@ -4,17 +4,18 @@ import styles from"./SetName.module.css"
 import { MdLock, MdPerson } from "react-icons/md";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from 'next/navigation';
 
 const backEnd:string = "http://localhost:8080";
 
-export default function SetName({ onLogin }: { onLogin: (name: string) => void }) {
+export default function SetName() {
     const [userName, setUserName] = useState('');
     const [password, setPassword] = useState('');
+    const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        e.preventDefault();
         try {
             const response = await fetch(`${backEnd}/login`, {
                 method: "POST",
@@ -26,12 +27,14 @@ export default function SetName({ onLogin }: { onLogin: (name: string) => void }
 
             const data = await response.json();
             if (data.code === 0) {
-                onLogin(userName);
+                localStorage.setItem('userName', userName);
+                router.push('/ChatRoom');
             } else {
                 alert(data.msg);
             }
         } catch (error) {
             console.error("Error logging in:", error);
+            alert("Login failed. Please check the console for details.");
         }
     }
     return (
@@ -53,9 +56,9 @@ export default function SetName({ onLogin }: { onLogin: (name: string) => void }
                         <span className={styles["icon"]}>
                             <MdLock />
                         </span>
-                        <input 
-                            type="password" 
-                            required 
+                        <input
+                            type="password"
+                            required
                             value={password}
                             onChange={(e) => setPassword(e.target.value)} />
                         <label>Password</label>
