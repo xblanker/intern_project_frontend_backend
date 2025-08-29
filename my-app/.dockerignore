@@ -1,0 +1,10 @@
+node_modules
+
+pnpm-debug.log
+
+.next
+
+.env
+.env.local
+
+README.md
